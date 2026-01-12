@@ -1,94 +1,80 @@
+import factory.JogoFactory;
+import service.JogoService;
+import ui.Menu;
+
 /**
- * Ponto de entrada do programa.
- * Responsável por inicializar o sistema e processar argumentos de linha de comando.
+ * Ponto de entrada principal do Sudoku Refatorado.
+ *
+ * <p><b>Arquitetura Nova:</b></p>
+ * <ul>
+ *   <li><b>Main</b>: Apenas inicialização (Single Responsibility)</li>
+ *   <li><b>JogoFactory</b>: Cria todas dependências (Factory Pattern)</li>
+ *   <li><b>JogoService</b>: Orquestra o jogo (Service Layer)</li>
+ *   <li><b>Menu</b>: Interface com usuário (UI Layer)</li>
+ *   <li><b>State Pattern</b>: Estados gerenciam regras por situação</li>
+ * </ul>
  */
 public class Main {
 
     /**
-     * Método principal - inicia o jogo de Sudoku.
-     * @param args Argumentos para células fixas no formato: linha coluna valor linha coluna valor...
+     * Método principal refatorado - foca apenas em inicialização.
+     *
+     * @param args Argumentos para células fixas no formato: linha coluna valor...
      */
     public static void main(String[] args) {
-        System.out.println("=== SUDOKU ===");
-        System.out.println("Bem-vindo ao jogo de Sudoku!");
+        System.out.println("=== SUDOKU REFATORADO ===");
+        System.out.println("🏗️  Arquitetura: State Pattern + Factory + Services");
+        System.out.println("📦 Pacotes: domain, service, state, validation, ui, factory");
 
         try {
-            // 1. Criar instância do jogo
-            Jogo jogo = new Jogo();
+            // 1. DECISÃO: Qual jogo criar baseado nos argumentos
+            JogoService jogoService = criarJogoAdequado(args);
 
-            // 2. Processar argumentos para células fixas (REQUISITO 1)
-            if (args.length > 0) {
-                System.out.println("Inicializando com células fixas...");
-                processarArgumentos(jogo, args);
-            }
+            // 2. INICIALIZAÇÃO: Começa no estado "Não Iniciado"
+            System.out.println("🎮 Estado inicial: " + jogoService.getTipoEstado());
 
-            // 3. Iniciar o jogo
-            boolean iniciado = jogo.iniciarJogo();
-            if (!iniciado) {
-                System.out.println("Erro: " + jogo.getUltimoErro());
-                return;
-            }
+            // 3. UI: Menu recebe o serviço (Dependency Injection)
+            Menu menu = new Menu(jogoService);
 
-            // 4. Criar e executar menu
-            Menu menu = new Menu(jogo);
+            // 4. EXECUÇÃO: Controle passa para o Menu
             menu.executar();
 
+        } catch (IllegalArgumentException e) {
+            // Erro de argumentos inválidos
+            System.out.println("❌ Argumentos inválidos: " + e.getMessage());
+            System.out.println("📋 Formato correto: linha coluna valor linha coluna valor...");
+            System.out.println("   Exemplo: 1 1 5 2 3 7");
+
         } catch (Exception e) {
-            System.out.println("❌ Erro crítico: " + e.getMessage());
+            // Erro inesperado
+            System.out.println("💥 Erro crítico: " + e.getMessage());
             e.printStackTrace();
+            System.out.println("\n📞 Reporte este erro com a mensagem acima.");
         }
 
-        System.out.println("\nAté a próxima! 👋");
+        System.out.println("\n✨ Jogo encerrado. Obrigado! 👋");
     }
 
     /**
-     * Processa os argumentos de linha de comando para criar células fixas.
-     * Formato esperado: linha coluna valor linha coluna valor...
-     * Exemplo: "1 1 5 2 3 7" = célula (1,1)=5 fixa, célula (2,3)=7 fixa
+     * Factory method que decide qual jogo criar.
+     * Demonstra o uso do Factory Pattern.
      */
-    private static void processarArgumentos(Jogo jogo, String[] args) {
-        // Verifica se número de argumentos é múltiplo de 3
-        if (args.length % 3 != 0) {
-            throw new IllegalArgumentException(
-                    "Número inválido de argumentos. " +
-                            "Use formato: linha coluna valor linha coluna valor..."
-            );
+    private static JogoService criarJogoAdequado(String[] args) {
+        if (args.length > 0) {
+            System.out.println("🔧 Criando jogo personalizado com " + (args.length / 3) + " células fixas...");
+            return JogoFactory.criarJogoComFixos(args);
+        } else {
+            System.out.println("🔧 Criando jogo vazio (sem células fixas)...");
+            return JogoFactory.criarJogoVazio();
         }
+    }
 
-        System.out.println("Processando " + args.length + " argumentos (" + (args.length/3) + " células fixas)");
-
-        // Processa cada trio: linha, coluna, valor
-        for (int i = 0; i < args.length; i += 3) {
-            try {
-                int linha = Integer.parseInt(args[i]);
-                int coluna = Integer.parseInt(args[i + 1]);
-                int valor = Integer.parseInt(args[i + 2]);
-
-                System.out.printf("  Célula fixa: (%d,%d) = %d%n", linha, coluna, valor);
-
-                // Validações básicas
-                if (linha < 1 || linha > 9 || coluna < 1 || coluna > 9 || valor < 1 || valor > 9) {
-                    throw new IllegalArgumentException(
-                            String.format("Valores inválidos: linha=%d coluna=%d valor=%d (devem ser 1-9)",
-                                    linha, coluna, valor)
-                    );
-                }
-
-                // Marca célula como fixa
-                boolean sucesso = jogo.marcarComoFixo(linha, coluna, valor);
-                if (!sucesso) {
-                    System.out.printf("  ⚠️ Aviso: Não foi possível marcar (%d,%d)=%d como fixo%n",
-                            linha, coluna, valor);
-                }
-
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        String.format("Argumentos devem ser números: %s %s %s",
-                                args[i], args[i+1], args[i+2])
-                );
-            }
-        }
-
-        System.out.println("Inicialização concluída com sucesso!");
+    /**
+     * Método auxiliar para testes rápidos.
+     * Pode ser usado para criar um jogo de exemplo.
+     */
+    private static JogoService criarJogoExemplo() {
+        System.out.println("🔧 Criando jogo de exemplo (puzzle fácil)...");
+        return JogoFactory.criarJogoExemplo();
     }
 }
